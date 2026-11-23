@@ -226,24 +226,5 @@ Para quem gerencia servidores e redes, as boas práticas para evitar esse tipo d
 * `README.md` - Este documento formatado para o portfólio no GitHub.
 * `img/` - Pasta com todas as evidências visuais organizadas e numeradas cronologicamente.
 
----
-
-## 💻 Como Importar para o seu GitHub
-
-Caso deseje enviar este projeto para o seu perfil no GitHub:
-
-1. Crie um novo repositório no seu GitHub (exemplo: `laboratorio-pentest-ftp-vsftpd`).
-2. Abra o terminal na pasta deste projeto e execute:
-
-```bash
-git init
-git add .
-git commit -m "Portfólio: Simulação de invasão vsftpd 2.3.4 em ambiente controlado"
-git branch -M main
-git remote add origin https://github.com/SEU-USUARIO/laboratorio-pentest-ftp-vsftpd.git
-git push -u origin main
-```
-
----
 
 *Projeto desenvolvido para fins educacionais e portfólio profissional em Cibersegurança.*
